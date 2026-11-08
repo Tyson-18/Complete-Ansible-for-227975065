@@ -1,0 +1,52 @@
+---
+- name: Build and Deploy Nginx Website Container
+  hosts: webserver
+  become: yes
+  vars:
+    student_num: "227975065"
+    project_dir: "/home/devasc/labs/ansible/web_227975065"
+    
+  tasks:
+
+    - name: Create working Directory for website files
+      file:
+        path: " {{ project_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create index.html with student number heading
+      copy:
+       dest: "{{ project_dir }}/index.html"
+       content: |
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>IFA3022 Skills Exam</title>
+        </head>
+        <body>
+          <h1>Student Number: {{ student_num }}</h1>
+        </body>
+        </html>
+       mode: '0644'
+
+    - name: Create Dockerfile
+      copy:
+        dest: "{{ project_dir }}/Dockerfile"
+        content: |
+          FROM nginx:alpine
+          COPY ./index.html /usr/share/nginx/html/index.html
+          EXPOSE 80
+        mode: '0644'
+
+    - name: Build Docker image
+      command: "docker build -t web_{{ student_num }} {{ project_dir }}"
+      changed_when: true
+
+    - name: Remove existing container with the same name if present
+      command: "docker rm -f site_{{ student_num }}"
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Run detached container mapping port 8085 to 80
+      command: "docker run -d --name site_{{ student_num }} -p 8085:80 web_{{ student_num }}"
+      changed_when: true
